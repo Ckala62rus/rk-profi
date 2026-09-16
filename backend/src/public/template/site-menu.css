@@ -1,0 +1,155 @@
+/* Текстовый логотип «РК ПРОФИ» вместо SVG ШМЗ */
+.header__logo,
+.mobile-menu__top-logo,
+.preloader__logo {
+  display: flex;
+  align-items: center;
+  color: currentColor;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.header--inverted .header__logo {
+  color: #fff;
+}
+
+.header--fixed .header__logo,
+.mobile-menu__top-logo,
+.preloader__logo {
+  color: #1a1a1a;
+}
+
+/* На внутренних страницах прелоадер не всегда скрывается (нет блоков с главной) */
+.preloader {
+  animation: site-preloader-hide 0.4s ease 1.2s forwards;
+}
+
+@keyframes site-preloader-hide {
+  to {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+  }
+}
+
+/* Брейкпоинт шапки: ≥1200px — десктоп-меню, <1200px — бургер (вместо 1440px в оригинале) */
+:root {
+  --header-desktop-min: 1200px;
+}
+
+/* Десктоп и небольшие ноутбуки (1366, 1280+): навигация и контакты в шапке */
+@media (min-width: 1200px) {
+  .header__nav {
+    display: block !important;
+    margin-right: 48px;
+  }
+
+  .header__nav-list {
+    display: flex !important;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .header__menu-btn {
+    display: none !important;
+  }
+
+  .header__logo--l {
+    max-width: 410px;
+  }
+}
+
+/* Планшет и мобильный: бургер вместо пунктов меню */
+@media (max-width: 1199px) {
+  .header__nav {
+    display: none !important;
+  }
+
+  .header__menu-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 10px;
+    background: #1a1a1a;
+    position: relative;
+    z-index: 2;
+    color: #fff;
+  }
+
+  .header__menu-btn .header__menu-icon {
+    display: none;
+  }
+
+  /* Старые псевдо-линии отключаем — рисуем .header__menu-bars в public.css */
+  .header__menu-btn::before,
+  .header__menu-btn::after {
+    content: none;
+    display: none;
+  }
+
+  .header__inner {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .header__logo--l,
+  .header__logo--s {
+    max-width: min(52vw, 220px);
+    flex-shrink: 1;
+  }
+
+  .header__right {
+    margin-left: auto;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .header__right > .header__link {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .header--l {
+    position: sticky;
+    top: 0;
+    z-index: 130;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+  }
+
+  .header--fixed:not(.is-active) {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .header--fixed.is-active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+}
+
+.mobile-menu {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.mobile-menu.mobile-menu--open {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}

@@ -1,0 +1,15 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "РК ПРОФИ (postgres-rkprofi)",
+      "Group": "RKPROFI",
+      "Host": "postgres-rkprofi",
+      "Port": 5432,
+      "MaintenanceDB": "rkprofi",
+      "Username": "rkprofi",
+      "SSLMode": "prefer",
+      "PassFile": "/pgpass",
+      "Comment": "Автоподключение к PostgreSQL из docker-compose"
+    }
+  }
+}

@@ -1,0 +1,146 @@
+services:
+  backend-rkprofi:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: backend-rkprofi
+    working_dir: /var/www
+    volumes:
+      - ./docker/php/config/php.ini:/usr/local/etc/php/conf.d/40-custom.ini
+      - ./docker/php/config/xdebug.ini:/usr/local/etc/php/conf.d/99-xdebug.ini
+      - ./src:/var/www
+      - ./docker/php/logs:/var/log/php
+    depends_on:
+      postgres-rkprofi:
+        condition: service_healthy
+      redis-rkprofi:
+        condition: service_started
+      mailhog-rkprofi:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      XDEBUG_MODE: ${XDEBUG_MODE:-develop,debug}
+      XDEBUG_CONFIG: ${XDEBUG_CONFIG:-client_host=host.docker.internal client_port=9003}
+      PHP_IDE_CONFIG: ${PHP_IDE_CONFIG:-serverName=rkprofi}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - rkprofi
+
+  nginx-rkprofi:
+    image: nginx:1.27-alpine
+    container_name: nginx-rkprofi
+    ports:
+      - "${NGINX_PORT:-8090}:80"
+    volumes:
+      - ./docker/nginx/config/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/config/conf.d:/etc/nginx/conf.d
+      - ./docker/nginx/certs:/etc/nginx/certs
+      - ./docker/nginx/htpasswd:/etc/nginx/htpasswd
+      - ./docker/nginx/templates:/etc/nginx/templates
+      - ./docker/nginx/logs:/var/log/nginx
+      - ./src:/var/www
+    depends_on:
+      - backend-rkprofi
+    environment:
+      NGINX_UPSTREAM: backend-rkprofi:9000
+    networks:
+      - rkprofi
+
+  postgres-rkprofi:
+    image: postgres:16-alpine
+    container_name: postgres-rkprofi
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      # Точка монтирования — родительская папка; PGDATA — подкаталог (иначе .gitignore мешает initdb)
+      - ./docker/postgres/data:/var/lib/postgresql
+      - ./docker/postgres/logs:/var/log/postgresql
+    environment:
+      PGDATA: /var/lib/postgresql/pgdata
+      POSTGRES_DB: ${POSTGRES_DB:-rkprofi}
+      POSTGRES_USER: ${POSTGRES_USER:-rkprofi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rkprofi}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rkprofi} -d ${POSTGRES_DB:-rkprofi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - rkprofi
+
+  redis-rkprofi:
+    image: redis:7-alpine
+    container_name: redis-rkprofi
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - ./docker/redis/data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    networks:
+      - rkprofi
+
+  # Воркер очереди (письма о заявках и пр.)
+  queue-rkprofi:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: queue-rkprofi
+    working_dir: /var/www
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    volumes:
+      - ./docker/php/config/php.ini:/usr/local/etc/php/conf.d/40-custom.ini
+      - ./src:/var/www
+      - ./docker/php/logs:/var/log/php
+    depends_on:
+      postgres-rkprofi:
+        condition: service_healthy
+      redis-rkprofi:
+        condition: service_started
+      mailhog-rkprofi:
+        condition: service_started
+      backend-rkprofi:
+        condition: service_started
+    env_file:
+      - .env
+    networks:
+      - rkprofi
+    restart: unless-stopped
+
+  # Локальный SMTP + веб-UI для просмотра писем
+  # UI: http://localhost:8026  |  SMTP: mailhog-rkprofi:1025
+  mailhog-rkprofi:
+    image: mailhog/mailhog:v1.0.1
+    container_name: mailhog-rkprofi
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_UI_PORT:-8026}:8025"
+      - "${MAILHOG_SMTP_PORT:-1026}:1025"
+    networks:
+      - rkprofi
+
+  pgadmin-rkprofi:
+    image: dpage/pgadmin4:8
+    container_name: pgadmin-rkprofi
+    restart: unless-stopped
+    ports:
+      - "${PGADMIN_PORT:-8082}:80"
+    volumes:
+      - ./docker/pgadmin/data/storage:/var/lib/pgadmin
+      - ./docker/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - ./docker/pgadmin/pgpass:/pgpass:ro
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    depends_on:
+      postgres-rkprofi:
+        condition: service_healthy
+    networks:
+      - rkprofi
+
+networks:
+  rkprofi:
+    driver: bridge

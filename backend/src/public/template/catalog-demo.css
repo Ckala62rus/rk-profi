@@ -1,0 +1,148 @@
+/* Хлебные крошки и шапка страницы каталога */
+main.main > .page-header.page-header--filters.container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+@media (min-width: 768px) {
+  main.main > .page-header.page-header--filters.container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (min-width: 1280px) {
+  main.main > .page-header.page-header--filters.container {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+/* Страница категорий каталога */
+.categories--page {
+  padding: 2.5rem 0 4rem;
+}
+
+.categories--page .categories__title {
+  margin-bottom: 2rem;
+}
+
+/* Демо-каталог: карточка с фото на фоне, подпись сверху */
+.catalog__list .catalog__item.catalog__item--secondary {
+  position: relative !important;
+  display: block !important;
+  aspect-ratio: 328 / 360;
+  overflow: hidden;
+  background-color: #e4e4e4;
+}
+
+.catalog__list .catalog__item.catalog__item--secondary > .catalog__item-pic {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  z-index: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  pointer-events: none;
+  opacity: 1;
+}
+
+.catalog__list .catalog__item.catalog__item--secondary > .catalog__item-info {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 2 !important;
+  display: flex !important;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 20px 20px 32px !important;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(255, 255, 255, 0.72) 70%,
+    rgba(255, 255, 255, 0) 100%
+  ) !important;
+  text-decoration: none;
+  color: inherit;
+}
+
+@media (min-width: 768px) {
+  .catalog__list .catalog__item.catalog__item--secondary > .catalog__item-info {
+    padding: 24px 24px 36px !important;
+  }
+}
+
+.catalog__list .catalog__item.catalog__item--secondary:hover .catalog__item-desc {
+  color: #1a1a1a;
+}
+
+/* Фон-картинка на карточке (дублирует <img> для надёжного превью) */
+.catalog__list #demo-glove-1 {
+  background-image: url(/template/demo/gloves/glove-01.svg?v=5);
+}
+.catalog__list #demo-glove-2 {
+  background-image: url(/template/demo/gloves/glove-02.svg?v=5);
+}
+.catalog__list #demo-glove-3 {
+  background-image: url(/template/demo/gloves/glove-03.svg?v=5);
+}
+.catalog__list #demo-glove-4 {
+  background-image: url(/template/demo/gloves/glove-04.svg?v=5);
+}
+.catalog__list #demo-glove-5 {
+  background-image: url(/template/demo/gloves/glove-05.svg?v=5);
+}
+.catalog__list #demo-glove-6 {
+  background-image: url(/template/demo/gloves/glove-06.svg?v=5);
+}
+.catalog__list #demo-glove-7 {
+  background-image: url(/template/demo/gloves/glove-07.svg?v=5);
+}
+.catalog__list #demo-glove-8 {
+  background-image: url(/template/demo/gloves/glove-08.svg?v=5);
+}
+.catalog__list #demo-glove-1,
+.catalog__list #demo-glove-2,
+.catalog__list #demo-glove-3,
+.catalog__list #demo-glove-4,
+.catalog__list #demo-glove-5,
+.catalog__list #demo-glove-6,
+.catalog__list #demo-glove-7,
+.catalog__list #demo-glove-8 {
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+/* main.js ждёт .main-screen__bg — на каталоге прелоадер не уходит и блокирует клики */
+.preloader {
+  animation: catalog-preloader-hide 0.35s ease 0.8s forwards !important;
+}
+
+@keyframes catalog-preloader-hide {
+  to {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    display: none !important;
+  }
+}

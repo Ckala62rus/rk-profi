@@ -1,0 +1,85 @@
+# IDE, editor and OS files
+/.idea/
+/.fleet/
+/.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Legacy static references kept outside the application repository
+/demo1/
+/grabber/
+/css/
+/js/
+/docker/
+/docker-compose.yml
+/index.html
+/.cursor/
+/BACKEND_TZ.md
+/frontend/package.json
+/frontend/package-lock.json
+
+# Local environment and credentials
+/backend/.env
+/backend/.env.*
+!/backend/.env.example
+/backend/src/.env
+/backend/src/.env.*
+!/backend/src/.env.example
+/backend/docker/pgadmin/pgpass
+/backend/src/auth.json
+
+# PHP and Node dependencies
+/backend/src/vendor/
+/backend/src/node_modules/
+/frontend/node_modules/
+
+# Laravel build and runtime files
+/backend/src/public/build/
+/backend/src/public/hot
+/backend/src/public/storage
+/backend/src/bootstrap/cache/*.php
+!/backend/src/bootstrap/cache/.gitignore
+/backend/src/.phpunit.result.cache
+/backend/src/.phpunit.cache/
+/backend/src/.phpactor.json
+/backend/src/storage/*.key
+/backend/src/storage/pail/
+/backend/src/storage/logs/*
+!/backend/src/storage/logs/.gitignore
+/backend/src/storage/app/private/*
+!/backend/src/storage/app/private/.gitignore
+/backend/src/storage/app/public/*
+!/backend/src/storage/app/public/.gitignore
+/backend/src/storage/framework/cache/data/*
+!/backend/src/storage/framework/cache/data/.gitignore
+/backend/src/storage/framework/sessions/*
+!/backend/src/storage/framework/sessions/.gitignore
+/backend/src/storage/framework/testing/*
+!/backend/src/storage/framework/testing/.gitignore
+/backend/src/storage/framework/views/*
+!/backend/src/storage/framework/views/.gitignore
+/backend/src/database/*.sqlite*
+
+# Docker local state, logs, certificates and credentials
+/backend/docker/postgres/data/*
+!/backend/docker/postgres/data/.gitignore
+/backend/docker/postgres/logs/*
+!/backend/docker/postgres/logs/.gitignore
+/backend/docker/redis/data/*
+!/backend/docker/redis/data/.gitignore
+/backend/docker/pgadmin/data/*
+!/backend/docker/pgadmin/data/.gitignore
+/backend/docker/php/logs/*
+!/backend/docker/php/logs/.gitignore
+/backend/docker/nginx/logs/*
+!/backend/docker/nginx/logs/.gitignore
+/backend/docker/nginx/certs/*
+!/backend/docker/nginx/certs/.gitignore
+/backend/docker/nginx/htpasswd/*
+!/backend/docker/nginx/htpasswd/.gitignore
+
+# Generic local artifacts
+*.log
+*.pid
+*.pid.lock

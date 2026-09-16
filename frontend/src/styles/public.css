@@ -1,0 +1,331 @@
+/**
+ * Точечные стили только для публичного сайта.
+ *
+ * Важно: не ставить overflow на #app — иначе position:fixed у
+ * .header--fixed привязывается к #app и шапка уезжает при скролле.
+ */
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100%;
+}
+
+#app > div {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+#app > div > .wrapper {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+#app > div > .wrapper > .main {
+  flex: 1 0 auto;
+}
+
+#app > div > .wrapper > .footer {
+  flex: 0 0 auto;
+  margin-top: auto;
+}
+
+.preloader.is-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  display: none !important;
+}
+
+/* В шаблоне картинки карточек дублировались background #demo-glove-N;
+   у нас показываем реальные <img> */
+.catalog__list .catalog__item.catalog__item--secondary > .catalog__item-pic {
+  opacity: 1 !important;
+}
+
+/* Мобильный бургер / закрытие меню — контраст, не вылезает за край, видимый крестик */
+@media (max-width: 1199px) {
+  .header__inner.container {
+    padding-right: max(16px, env(safe-area-inset-right));
+    padding-left: max(16px, env(safe-area-inset-left));
+    gap: 8px;
+    overflow: visible;
+  }
+
+  .header__right {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex: 0 0 auto;
+    max-width: none;
+    margin-left: auto;
+  }
+
+  /* Контакты в шапке на узком экране убираем — они есть в мобильном меню */
+  .header__right > .header__link {
+    display: none !important;
+  }
+
+  .header__menu-btn._menuBtn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid #d8d8d8 !important;
+    border-radius: 10px !important;
+    background: #1a1a1a !important;
+    color: #fff !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    opacity: 1 !important;
+    position: relative;
+    z-index: 20;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+
+  .header__menu-btn._menuBtn:hover,
+  .header__menu-btn._menuBtn:focus-visible {
+    opacity: 1 !important;
+    background: #000 !important;
+  }
+
+  /* Прячем старые псевдо-линии и пустой SVG из шаблона */
+  .header__menu-btn._menuBtn::before,
+  .header__menu-btn._menuBtn::after,
+  .header__menu-btn._menuBtn .header__menu-icon {
+    display: none !important;
+    content: none !important;
+    box-shadow: none !important;
+  }
+
+  .header__menu-bars {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 20px;
+    height: 16px;
+  }
+
+  .header__menu-bars > span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    border-radius: 1px;
+    background: #fff;
+  }
+
+  .header--inverted .header__menu-btn._menuBtn {
+    background: #fff !important;
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    color: #1a1a1a !important;
+  }
+
+  .header--inverted .header__menu-bars > span {
+    background: #1a1a1a;
+  }
+}
+
+@media (max-width: 767px) {
+  .header__logo,
+  .header__logo--l,
+  .header__logo--s {
+    max-width: calc(100% - 60px) !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Открытое мобильное меню: крестик всегда виден */
+.mobile-menu__top.container {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-left: max(16px, env(safe-area-inset-left));
+}
+
+.mobile-menu__top-logo {
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-start !important;
+}
+
+.mobile-menu__close._menuClose {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px !important;
+  margin: 0 0 0 auto !important;
+  padding: 0 !important;
+  border: 1px solid #d8d8d8 !important;
+  border-radius: 10px !important;
+  background: #f3f3f3 !important;
+  color: #1a1a1a !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  opacity: 1 !important;
+  position: relative;
+  z-index: 130;
+  cursor: pointer;
+}
+
+.mobile-menu__close._menuClose:hover,
+.mobile-menu__close._menuClose:focus-visible {
+  opacity: 1 !important;
+  background: #e8e8e8 !important;
+}
+
+.mobile-menu__close._menuClose .mobile-menu__close-icon {
+  display: none !important;
+}
+
+.mobile-menu__close-x {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+.mobile-menu__close-x::before,
+.mobile-menu__close-x::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 1px;
+  background: #1a1a1a;
+}
+
+.mobile-menu__close-x::before {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.mobile-menu__close-x::after {
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+.mobile-menu.mobile-menu--open {
+  z-index: 200;
+}
+
+/* Карусель картинок на карточке категории */
+.catalog__item--carousel {
+  position: relative;
+  overflow: hidden;
+}
+
+.catalog__item-carousel {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.catalog__item-slide {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+.catalog__item-slide.is-active {
+  opacity: 1;
+}
+
+.catalog__item--carousel .catalog__item-info {
+  position: relative;
+  z-index: 1;
+}
+
+.request-form__turnstile {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.request-form__consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin: 0.85rem 0 0.25rem;
+  cursor: pointer;
+}
+
+.request-form__consent-input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.request-form__consent-text {
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #4a4f55;
+}
+
+.request-form__consent-text a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Зона файлов: кликабельная оболочка + скрытый input (открывается через JS) */
+.request-form__file {
+  position: relative;
+}
+
+.request-form__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Яндекс.Карта на странице контактов */
+.contacts__map-embed {
+  margin: 1.25rem 0 1rem;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f3f3f3;
+  border: 1px solid #eceef0;
+}
+
+.contacts__map-iframe {
+  display: block;
+  width: 100%;
+  height: min(451px, 56vw);
+  min-height: 260px;
+  border: 0;
+}
