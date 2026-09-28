@@ -402,7 +402,7 @@ docker compose --env-file .env.production -f docker-compose.production.yml --pro
 
 Certbot создаст сертификат в `deploy/letsencrypt/`. Эта папка исключена из Git; не копируйте и не редактируйте ключи вручную.
 
-### 8.2 Переключение на одновременный HTTP и HTTPS
+### 8.2 Включение HTTPS и перенаправления с HTTP
 
 Откройте `.env.production` и измените следующие значения:
 
@@ -410,8 +410,8 @@ Certbot создаст сертификат в `deploy/letsencrypt/`. Эта п�
 COMPOSE_PROFILES=https
 APP_URL=https://rkprofi.ru
 FRONTEND_URL=https://rkprofi.ru
-# Пока HTTP должен оставаться рабочим, оставьте false:
-SESSION_SECURE_COOKIE=false
+# После включения HTTPS отправляйте сессионные cookie только по защищённому соединению.
+SESSION_SECURE_COOKIE=true
 ```
 
 Переключите Nginx. Не используйте `-v`: этот параметр удалит тома базы данных и загруженных файлов.
@@ -421,11 +421,11 @@ docker compose --env-file .env.production -f docker-compose.production.yml down
 docker compose --env-file .env.production -f docker-compose.production.yml config
 docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
 docker compose --env-file .env.production -f docker-compose.production.yml exec web-https nginx -t
-curl -I http://127.0.0.1/up
-curl -k -I https://127.0.0.1/up -H 'Host: rkprofi.ru'
+curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' http://127.0.0.1/up -H 'Host: rkprofi.ru'
+curl -k -sS -o /dev/null -w '%{http_code}\n' https://127.0.0.1/up -H 'Host: rkprofi.ru'
 ```
 
-После этого сайт доступен и по HTTP, и по HTTPS на обоих доменах. HTTP не перенаправляется специально, как требуется для текущего режима. Проверить сертификат с внешнего компьютера можно так:
+После этого сайт доступен по HTTPS на обоих доменах. Любой HTTP-запрос, кроме пути ACME-проверки, перенаправляется на HTTPS с тем же доменным именем. Проверить сертификат с внешнего компьютера можно так:
 
 ```bash
 curl -I https://rkprofi.ru

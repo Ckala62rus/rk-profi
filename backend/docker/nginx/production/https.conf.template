@@ -2,7 +2,7 @@
 # start safely even while the app container is still joining the network.
 resolver 127.0.0.11 ipv6=off valid=10s;
 
-# HTTP serves the application and the HTTP-01 challenge required for renewal.
+# Keep the ACME challenge on HTTP; redirect every other request to HTTPS.
 server {
     listen 80;
     listen [::]:80;
@@ -17,21 +17,8 @@ server {
         try_files $uri =404;
     }
 
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        try_files $uri =404;
-        include fastcgi_params;
-        set $fastcgi_upstream ${NGINX_UPSTREAM};
-        fastcgi_pass $fastcgi_upstream;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
-        fastcgi_param HTTP_X_FORWARDED_HOST $host;
-        fastcgi_param HTTP_X_FORWARDED_FOR $proxy_add_x_forwarded_for;
-        fastcgi_param HTTPS off;
-        fastcgi_read_timeout 60s;
+    location ^~ / {
+        return 301 https://$host$request_uri;
     }
 
     location ~ /\. {
