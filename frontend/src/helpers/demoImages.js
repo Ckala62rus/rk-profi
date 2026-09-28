@@ -14,20 +14,20 @@ export const DEMO_PRODUCT_IMAGES = [
     '/template/demo/gloves/glove-08.svg',
 ];
 
-/** JPG/SVG категорий */
+/** Фотографии категорий по умолчанию */
 export const DEMO_CATEGORY_IMAGES = [
-    '/template/demo/categories/cat-01.svg',
-    '/template/demo/categories/cat-02.svg',
-    '/template/demo/categories/cat-03.svg',
-    '/template/demo/categories/cat-04.svg',
-    '/template/demo/categories/cat-05.svg',
-    '/template/demo/categories/cat-06.svg',
+    '/images/defaults/category-ppe.jpg',
+    '/images/defaults/category-workwear.jpg',
+    '/images/defaults/category-haberdashery.jpg',
+    '/images/defaults/category-bath.jpg',
+    '/images/defaults/category-shoes.jpg',
+    '/images/defaults/category-sheepskin.jpg',
 ];
 
 /** Дефолты CMS-страниц */
 export const DEMO_PAGE_IMAGES = {
-    hero: '/template/demo/pages/hero.svg',
-    homeAbout: '/template/demo/pages/home-about.svg',
+    hero: '/images/defaults/hero.jpg',
+    homeAbout: '/images/defaults/home-about.jpg',
 };
 
 /**

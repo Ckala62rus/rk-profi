@@ -43,13 +43,13 @@ class DatabaseSeeder extends Seeder
                     'hero' => [
                         'title' => 'Производственная компания РК ПРОФИ',
                         'subtitle' => 'Мы предлагаем широкий ассортимент изделий из натурального кожевенного спилка и натуральной овчины',
-                        'background_type' => 'video',
-                        'background_image_url' => null,
-                        'background_video_url' => '/template/video.mp4',
+                        'background_type' => 'image',
+                        'background_image_url' => '/images/defaults/hero.jpg',
+                        'background_video_url' => null,
                     ],
                     'about' => [
                         'title' => 'РК ПРОФИ',
-                        'background_image_url' => '/template/demo/pages/home-about.svg',
+                        'background_image_url' => '/images/defaults/home-about.jpg',
                         'items' => [
                             ['title' => 'Более 20 лет на рынке', 'text' => 'Информация о предприятии.'],
                             ['title' => 'Широкий ассортимент', 'text' => 'Изделия из натурального кожевенного спилка и натуральной овчины для разных задач.'],
@@ -117,7 +117,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Перчатки',
                 'description' => 'Каталог моделей рабочих перчаток',
-                'image_path' => '/template/demo/categories/cat-01.svg',
+                'image_path' => '/images/defaults/category-ppe.jpg',
                 'sort' => 1,
                 'is_active' => true,
             ]
@@ -128,17 +128,17 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Спецодежда и аксессуары',
                 'description' => 'описание',
-                'image_path' => '/template/demo/categories/cat-02.svg',
+                'image_path' => '/images/defaults/category-workwear.jpg',
                 'sort' => 2,
                 'is_active' => true,
             ]
         );
 
         foreach ([
-            ['slug' => 'galantereya', 'name' => 'Галантерея', 'description' => 'Изделия и аксессуары из натуральных материалов для повседневного использования.', 'image' => '/template/demo/categories/cat-03.svg', 'sort' => 3],
-            ['slug' => 'bannye-izdeliya', 'name' => 'Банные изделия', 'description' => 'Практичные изделия для бани и сауны из натуральной овчины и кожевенного спилка.', 'image' => '/template/demo/categories/cat-04.svg', 'sort' => 4],
-            ['slug' => 'obuv', 'name' => 'Обувь', 'description' => 'Тёплая и надёжная обувь для работы, отдыха и повседневной носки.', 'image' => '/template/demo/categories/cat-05.svg', 'sort' => 5],
-            ['slug' => 'naturalnyy-mekh', 'name' => 'Натуральный мех', 'description' => 'Материалы и готовые изделия из натурального меха для дома, отдыха и производства.', 'image' => '/template/demo/categories/cat-06.svg', 'sort' => 6],
+            ['slug' => 'galantereya', 'name' => 'Галантерея', 'description' => 'Изделия и аксессуары из натуральных материалов для повседневного использования.', 'image' => '/images/defaults/category-haberdashery.jpg', 'sort' => 3],
+            ['slug' => 'bannye-izdeliya', 'name' => 'Банные изделия', 'description' => 'Практичные изделия для бани и сауны из натуральной овчины и кожевенного спилка.', 'image' => '/images/defaults/category-bath.jpg', 'sort' => 4],
+            ['slug' => 'obuv', 'name' => 'Обувь', 'description' => 'Тёплая и надёжная обувь для работы, отдыха и повседневной носки.', 'image' => '/images/defaults/category-shoes.jpg', 'sort' => 5],
+            ['slug' => 'naturalnyy-mekh', 'name' => 'Натуральный мех', 'description' => 'Материалы и готовые изделия из натурального меха для дома, отдыха и производства.', 'image' => '/images/defaults/category-sheepskin.jpg', 'sort' => 6],
         ] as $cat) {
             Category::query()->updateOrCreate(
                 ['slug' => $cat['slug']],

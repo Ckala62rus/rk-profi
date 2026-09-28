@@ -1,0 +1,173 @@
+services:
+  app:
+    image: rkprofi-app:${APP_IMAGE_TAG:-production}
+    build:
+      context: ..
+      dockerfile: backend/docker/php/Dockerfile.production
+      target: php
+    working_dir: /var/www
+    env_file:
+      - ${ENV_FILE:-./.env.production}
+    volumes:
+      - laravel-storage:/var/www/storage
+      - laravel-cache:/var/www/bootstrap/cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    init: true
+
+  queue:
+    image: rkprofi-app:${APP_IMAGE_TAG:-production}
+    working_dir: /var/www
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    env_file:
+      - ${ENV_FILE:-./.env.production}
+    volumes:
+      - laravel-storage:/var/www/storage
+      - laravel-cache:/var/www/bootstrap/cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    init: true
+
+  scheduler:
+    image: rkprofi-app:${APP_IMAGE_TAG:-production}
+    working_dir: /var/www
+    command: ["php", "artisan", "schedule:work"]
+    env_file:
+      - ${ENV_FILE:-./.env.production}
+    volumes:
+      - laravel-storage:/var/www/storage
+      - laravel-cache:/var/www/bootstrap/cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    init: true
+
+  migrate:
+    image: rkprofi-app:${APP_IMAGE_TAG:-production}
+    working_dir: /var/www
+    command: ["sh", "-c", "php artisan migrate --force && php artisan optimize"]
+    env_file:
+      - ${ENV_FILE:-./.env.production}
+    volumes:
+      - laravel-storage:/var/www/storage
+      - laravel-cache:/var/www/bootstrap/cache
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: "no"
+    init: true
+
+  web-http:
+    image: rkprofi-web:${APP_IMAGE_TAG:-production}
+    build:
+      context: ..
+      dockerfile: backend/docker/php/Dockerfile.production
+      target: nginx
+    environment:
+      NGINX_MODE: http
+      NGINX_UPSTREAM: "app:9000"
+      SERVER_NAME: ${SERVER_NAME:?Set SERVER_NAME in .env.production}
+      CANONICAL_HOST: ${CANONICAL_HOST:?Set CANONICAL_HOST in .env.production}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - laravel-storage:/var/www/storage:ro
+      - ./deploy/certbot-www:/var/www/certbot:ro
+    depends_on:
+      app:
+        condition: service_started
+    restart: unless-stopped
+    profiles: ["http"]
+    init: true
+
+  web-https:
+    image: rkprofi-web:${APP_IMAGE_TAG:-production}
+    build:
+      context: ..
+      dockerfile: backend/docker/php/Dockerfile.production
+      target: nginx
+    environment:
+      NGINX_MODE: https
+      NGINX_UPSTREAM: "app:9000"
+      SERVER_NAME: ${SERVER_NAME:?Set SERVER_NAME in .env.production}
+      CANONICAL_HOST: ${CANONICAL_HOST:?Set CANONICAL_HOST in .env.production}
+      LETSENCRYPT_CERT_NAME: ${LETSENCRYPT_CERT_NAME:?Set LETSENCRYPT_CERT_NAME in .env.production}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - laravel-storage:/var/www/storage:ro
+      - ./deploy/certbot-www:/var/www/certbot:ro
+      - ./deploy/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      app:
+        condition: service_started
+    restart: unless-stopped
+    profiles: ["https"]
+    init: true
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:?Set DB_DATABASE in .env.production}
+      POSTGRES_USER: ${DB_USERNAME:?Set DB_USERNAME in .env.production}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.production}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?Set PGADMIN_DEFAULT_EMAIL in .env.production}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in .env.production}
+      PGADMIN_CONFIG_SERVER_MODE: "True"
+    ports:
+      - "${PGADMIN_PORT:-127.0.0.1:5050}:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot:v2.11.0
+    command: ["renew", "--webroot", "--webroot-path", "/var/www/certbot"]
+    volumes:
+      - ./deploy/certbot-www:/var/www/certbot
+      - ./deploy/letsencrypt:/etc/letsencrypt
+    profiles: ["certbot"]
+    restart: "no"
+
+volumes:
+  postgres-data:
+  redis-data:
+  laravel-storage:
+  laravel-cache:
+  pgadmin-data:

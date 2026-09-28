@@ -62,6 +62,8 @@ Thumbs.db
 /backend/src/database/*.sqlite*
 
 # Docker local state, logs, certificates and credentials
+/backend/deploy/letsencrypt/
+/backend/deploy/certbot-www/
 /backend/docker/postgres/data/*
 !/backend/docker/postgres/data/.gitignore
 /backend/docker/postgres/logs/*

@@ -42,9 +42,9 @@ const DEFAULT_BLOCKS = {
             title: 'Производственная компания РК ПРОФИ',
             subtitle:
                 'Мы предлагаем широкий ассортимент изделий из натурального кожевенного спилка и натуральной овчины',
-            background_type: 'video',
+            background_type: 'image',
             background_image_url: DEMO_PAGE_IMAGES.hero,
-            background_video_url: '/template/video.mp4',
+            background_video_url: null,
         },
         about: {
             title: 'РК ПРОФИ',
