@@ -30,7 +30,7 @@ const blocks = computed(() => props.page?.blocks || {});
  */
 const hero = computed(() => {
     const raw = blocks.value.hero || {};
-    const type = raw.background_type === 'image' ? 'image' : 'video';
+    const type = raw.background_type === 'video' ? 'video' : 'image';
     const imageUrl = raw.background_image_url || DEMO_PAGE_IMAGES.hero;
     return {
         title: raw.title || 'Производственная компания РК ПРОФИ',

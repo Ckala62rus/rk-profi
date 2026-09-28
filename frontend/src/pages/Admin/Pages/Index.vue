@@ -104,8 +104,8 @@ const forms = reactive({
     home: {
         hero_title: '',
         hero_subtitle: '',
-        hero_background_type: 'video',
-        hero_video_url: '/template/video.mp4',
+        hero_background_type: 'image',
+        hero_video_url: null,
         hero_image_url: DEMO_PAGE_IMAGES.hero,
         about_title: 'РК ПРОФИ',
         about_image_url: DEMO_PAGE_IMAGES.homeAbout,
@@ -166,7 +166,7 @@ const fillForm = (slug, page) => {
         const about = { ...(defaults.about || {}), ...(blocks.about || blocks.about_preview || {}) };
         forms.home.hero_title = hero.title || '';
         forms.home.hero_subtitle = hero.subtitle || '';
-        forms.home.hero_background_type = hero.background_type || 'video';
+        forms.home.hero_background_type = hero.background_type || 'image';
         forms.home.hero_video_url = hero.background_video_url || '/template/video.mp4';
         forms.home.hero_image_url = hero.background_image_url || DEMO_PAGE_IMAGES.hero;
         forms.home.about_title = about.title || 'РК ПРОФИ';
