@@ -50,7 +50,7 @@ services:
   migrate:
     image: rkprofi-app:${APP_IMAGE_TAG:-production}
     working_dir: /var/www
-    command: ["sh", "-c", "php artisan migrate --force && php artisan optimize"]
+    command: ["sh", "-c", "php artisan migrate --force && php artisan db:seed --class=RequiredPublicPagesSeeder --force && php artisan optimize"]
     env_file:
       - ${ENV_FILE:-./.env.production}
     volumes:

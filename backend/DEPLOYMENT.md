@@ -6,6 +6,25 @@
 
 > Все команды после раздела «Клонировать проект» выполняются из каталога `backend`. Не запускайте production командой `docker compose up` без `-f docker-compose.production.yml`.
 
+## Как безопасно выполнять production-команды
+
+Во всех примерах ниже используется одна форма Compose-команды:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml ...
+```
+
+`--env-file .env.production` передаёт сервисам production-переменные и секреты, а `-f docker-compose.production.yml` выбирает production-стек вместо локального Docker-окружения. Не вставляйте вывод `docker compose ... config` в чаты или тикеты: он может содержать пароли и ключи.
+
+Основные действия Compose:
+
+- `up -d` создаёт и запускает нужные контейнеры в фоне; `--build` перед этим собирает обновлённые образы из исходного кода;
+- `ps` показывает состояние контейнеров; `logs --tail=100 SERVICE` выводит последние 100 строк журнала указанного сервиса;
+- `exec SERVICE COMMAND` выполняет команду внутри уже работающего контейнера;
+- `run --rm SERVICE COMMAND` запускает отдельный одноразовый контейнер и удаляет только его после завершения;
+- `down` останавливает и удаляет контейнеры и сеть текущего Compose-проекта, но сохраняет именованные тома PostgreSQL, Redis, загрузок и PgAdmin;
+- **никогда не добавляйте `-v` к `down`**: `docker compose down -v` удаляет именованные тома вместе с данными. Также не используйте `docker volume rm` и `docker system prune --volumes` без проверенной резервной копии и отдельного плана восстановления.
+
 ## 0. Что подготовить заранее
 
 1. VDS с публичным IPv4: для небольшого сайта достаточно 2 vCPU, 4 ГБ RAM и 50 ГБ SSD.
@@ -367,13 +386,54 @@ docker compose --env-file .env.production -f docker-compose.production.yml logs 
 curl -I http://127.0.0.1/up
 ```
 
-У `migrate` ожидается статус `Exited (0)`: он один раз применяет миграции и подготавливает кэш. Сайт должен открываться по HTTP на каждом из двух доменов.
+Назначение команд:
+
+- `up -d --build` собирает образы и запускает сервисы в фоне. Одноразовый сервис `migrate` применяет миграции, создаёт отсутствующие страницы «О компании» и «Услуги» без изменения существующего CMS-контента, затем подготавливает кэш Laravel;
+- `ps` показывает состояние. У `migrate` ожидается `Exited (0)`: он завершился штатно после одноразовой задачи;
+- `logs --tail=100 migrate` показывает последние 100 строк именно инициализации БД и кэша;
+- `curl -I http://127.0.0.1/up` запрашивает health endpoint на самом VDS. Он должен вернуть `HTTP/1.1 200 OK`; эта проверка не зависит от DNS домена.
+
+После успешной проверки сайт должен открываться по HTTP на каждом из двух доменов.
 
 При ошибке сначала посмотрите логи:
 
 ```bash
 docker compose --env-file .env.production -f docker-compose.production.yml logs --tail=100 app web-http migrate
 ```
+
+`logs` ничего не меняет: команда выводит последние 100 строк журналов PHP-приложения, HTTP-Nginx и одноразовой миграции.
+
+### 7.1 Первый вход в админку и управление паролем
+
+**Как попасть в админку:** после включения HTTPS откройте `https://rkprofi.ru/admin/login`, введите email и пароль созданного ниже администратора. Учётных данных по умолчанию нет.
+
+Production не запускает `DatabaseSeeder` и намеренно не создаёт учётную запись с известным паролем. Не используйте `php artisan db:seed` или `migrate:fresh` для создания администратора: первый может перезаписать стартовый CMS-контент, второй удалит таблицы базы данных.
+
+Создайте первого администратора после успешного старта `app`. Замените `admin@example.com` и `Имя администратора` на свои значения. Команда не показывает вводимый пароль и не помещает его в shell history:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan admin:user create admin@example.com --name="Имя администратора"
+```
+
+`exec app` запускает Artisan внутри уже работающего PHP-контейнера. `admin:user create` создаёт только одного пользователя с указанным email; если такой email уже существует, команда завершается без изменений. Она запросит подтверждение, затем пароль дважды. Пароль должен состоять минимум из 16 символов и включать строчные и прописные буквы, цифру и символ. Сохраните его в корпоративном менеджере паролей.
+
+Учётную запись можно создать уже на HTTP-этапе, но **не входите в админку до завершения раздела 8.2**: в этот момент HTTPS ещё не включён, а `SESSION_SECURE_COOKIE=true` намеренно не даёт браузеру передавать сессионную cookie по HTTP.
+
+После успешного включения HTTPS откройте:
+
+```text
+https://rkprofi.ru/admin/login
+```
+
+Войдите с созданным email и паролем. Оба домена обслуживают тот же сайт, но для постоянной закладки выберите один основной адрес. На общем компьютере используйте кнопку выхода после работы.
+
+Если пароль утрачен или есть подозрение на компрометацию, выполните на VDS:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan admin:user reset admin@example.com
+```
+
+`admin:user reset` находит только существующего пользователя, запрашивает новый пароль скрытым вводом и отзывает **все** его активные Sanctum API-токены. После этого потребуется войти заново на всех устройствах. Команда изменяет только пароль и токены выбранного пользователя; она не удаляет сайт, загрузки, контейнеры или Docker-тома.
 
 ## 8. Выпустить сертификат Let’s Encrypt и включить HTTPS
 
@@ -425,12 +485,95 @@ curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' http://127.0.0.1/up -H
 curl -k -sS -o /dev/null -w '%{http_code}\n' https://127.0.0.1/up -H 'Host: rkprofi.ru'
 ```
 
+Назначение команд:
+
+- `down` кратковременно останавливает стек и удаляет только его контейнеры и сеть; именованные тома с PostgreSQL, Redis и загрузками остаются на сервере;
+- `config` проверяет подстановку переменных и выбранный профиль до запуска; не публикуйте его полный вывод, потому что в нём могут быть секреты;
+- `up -d --build` собирает актуальные образы и поднимает HTTPS-Nginx вместе с остальными сервисами в фоне;
+- `exec web-https nginx -t` проверяет синтаксис фактически загруженной конфигурации Nginx;
+- первый `curl` должен вывести `301 https://rkprofi.ru/up`, второй — `200`; они проверяют HTTP-перенаправление и HTTPS-ответ локально без вывода cookie.
+
 После этого сайт доступен по HTTPS на обоих доменах. Любой HTTP-запрос, кроме пути ACME-проверки, перенаправляется на HTTPS с тем же доменным именем. Проверить сертификат с внешнего компьютера можно так:
 
 ```bash
 curl -I https://rkprofi.ru
 curl -I https://xn--h1admddc3a.xn--p1ai
 ```
+
+### 8.3 Аварийный переход с HTTPS на HTTP при проблеме с сертификатом
+
+Используйте этот режим только если `web-https` не запускается или не обслуживает сайт из-за отсутствующего, повреждённого либо недоступного сертификата. При HTTP трафик, включая вход в админку, передаётся без шифрования. Не входите в админку и не меняйте пароли через HTTP без крайней необходимости. Учтите, что браузер с ранее сохранённой HSTS-политикой может вообще не позволить открыть HTTP-версию.
+
+Перед переключением убедитесь, что порт 80 снова доступен извне. Если ранее вы закрывали его по разделу 10, в `.env.production` должно быть `HTTP_PORT=80`, а правило UFW нужно вернуть:
+
+```bash
+sudo ufw allow 80/tcp comment 'HTTP / Lets Encrypt'
+```
+
+Команда открывает только TCP-порт 80 в UFW. Она нужна для временного HTTP-доступа и для проверки Let’s Encrypt по HTTP-01; не открывает PostgreSQL, Redis или PgAdmin.
+
+Откройте `.env.production` и временно задайте:
+
+```dotenv
+COMPOSE_PROFILES=http
+HTTP_PORT=80
+APP_URL=http://rkprofi.ru
+FRONTEND_URL=http://rkprofi.ru
+SESSION_SECURE_COOKIE=false
+```
+
+`COMPOSE_PROFILES=http` выбирает контейнер `web-http`, который не читает TLS-ключи. `SESSION_SECURE_COOKIE=false` необходимо только на время HTTP: иначе браузер не отправит Laravel session-cookie. Не меняйте `SERVER_NAME`, `SANCTUM_STATEFUL_DOMAINS`, пароли или `APP_KEY`.
+
+Затем переключите контейнеры без удаления томов:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml config
+docker compose --env-file .env.production -f docker-compose.production.yml down
+docker compose --env-file .env.production -f docker-compose.production.yml up -d
+docker compose --env-file .env.production -f docker-compose.production.yml ps
+docker compose --env-file .env.production -f docker-compose.production.yml logs --tail=100 migrate web-http
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1/up -H 'Host: rkprofi.ru'
+```
+
+`config` проверяет, что выбран HTTP-профиль; `down` останавливает контейнеры, но сохраняет именованные тома; `up -d` запускает их в фоне с `web-http`; `ps` показывает состояние; `logs` должен показать у `migrate` статус `Exited (0)`, а `curl` — `200`. **Не добавляйте `-v` к `down`**. Не выполняйте в аварийном режиме `git pull` или обновление образов: сначала восстановите работоспособность, затем обновляйте проект отдельным шагом.
+
+Проверьте HTTP с внешнего компьютера на обоих именах:
+
+```bash
+curl -I http://rkprofi.ru
+curl -I http://xn--h1admddc3a.xn--p1ai
+```
+
+После восстановления сертификата не оставляйте сайт в HTTP. Если каталог сертификата существует, сначала выполните реальное продление:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml --profile certbot run --rm certbot renew
+```
+
+`run --rm` запускает одноразовый Certbot и удаляет только его контейнер после завершения; `renew` обновляет лишь сертификаты, которым уже требуется продление. Если сертификат или его каталог отсутствует, повторите команду `certbot certonly` из раздела 8.1 с теми же доменами.
+
+Когда Certbot подтвердит наличие сертификата, верните в `.env.production` значения:
+
+```dotenv
+COMPOSE_PROFILES=https
+HTTP_PORT=80
+APP_URL=https://rkprofi.ru
+FRONTEND_URL=https://rkprofi.ru
+SESSION_SECURE_COOKIE=true
+```
+
+И вернитесь к HTTPS безопасной последовательностью:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml config
+docker compose --env-file .env.production -f docker-compose.production.yml down
+docker compose --env-file .env.production -f docker-compose.production.yml up -d
+docker compose --env-file .env.production -f docker-compose.production.yml exec web-https nginx -t
+curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' http://127.0.0.1/up -H 'Host: rkprofi.ru'
+curl -k -sS -o /dev/null -w '%{http_code}\n' https://127.0.0.1/up -H 'Host: rkprofi.ru'
+```
+
+Команды снова выбирают TLS-контейнер, проверяют его конфигурацию и ожидают `301` для HTTP и `200` для HTTPS. Если во время аварийного HTTP-режима выполнялся вход в админку, сразу после возврата на HTTPS сбросьте пароль администратора командой из раздела 7.1: она отзовёт все старые токены.
 
 ## 9. Автопродление сертификата
 
@@ -440,11 +583,15 @@ Let’s Encrypt использует HTTP-01, поэтому во время п�
 docker compose --env-file .env.production -f docker-compose.production.yml --profile certbot run --rm certbot renew --dry-run
 ```
 
+`renew --dry-run` запрашивает тестовое продление и не изменяет боевой сертификат. `run --rm` удаляет только одноразовый Certbot-контейнер после завершения. Переходите к cron только если вывод содержит сообщение об успешных simulated renewals.
+
 Откройте root-crontab:
 
 ```bash
 sudo crontab -e
 ```
+
+`sudo crontab -e` открывает расписание задач root. Это требуется, чтобы cron мог записывать в `/var/log/`; редактируйте только строку этого проекта.
 
 Добавьте строку, заменив путь, если проект находится не в `/srv/rk-profi/backend`:
 
@@ -452,7 +599,9 @@ sudo crontab -e
 17 3,15 * * * cd /srv/rk-profi/backend && /usr/bin/docker compose --env-file .env.production -f docker-compose.production.yml --profile certbot run --rm certbot && /usr/bin/docker compose --env-file .env.production -f docker-compose.production.yml exec -T web-https nginx -s reload >> /var/log/rkprofi-certbot.log 2>&1
 ```
 
-Проверьте путь Docker командой `command -v docker`; если это не `/usr/bin/docker`, подставьте фактический путь в cron.
+Задача запускается дважды в сутки. Certbot продлевает сертификат только когда это необходимо, затем `nginx -s reload` перечитывает сертификат без остановки сайта. Эта строка предполагает, что запущен `web-https`; во время аварийного HTTP-режима из раздела 8.3 перезагрузка HTTPS-Nginx завершится ошибкой. Сначала восстановите сертификат и вернитесь к HTTPS, затем cron снова будет работать штатно.
+
+Проверьте путь Docker командой `command -v docker`; она выводит абсолютный путь к исполняемому файлу. Если это не `/usr/bin/docker`, подставьте фактический путь в cron.
 
 ## 10. Как позднее закрыть HTTP
 
@@ -472,9 +621,9 @@ docker compose --env-file .env.production -f docker-compose.production.yml up -d
 docker compose --env-file .env.production -f docker-compose.production.yml ps
 ```
 
-Порт 80 будет привязан только к `127.0.0.1` и перестанет быть доступным из интернета; HTTPS на 443 продолжит работать. Не рассчитывайте для этого на одно лишь правило `ufw deny 80`, потому что Docker публикует порты через собственные правила NAT.
+`up -d` пересоздаёт только изменившиеся контейнеры, а `ps` подтверждает опубликованные порты. После этого порт 80 будет привязан только к `127.0.0.1` и перестанет быть доступным из интернета; HTTPS на 443 продолжит работать. Не рассчитывайте для этого на одно лишь правило `ufw deny 80`, потому что Docker публикует порты через собственные правила NAT.
 
-После закрытия порта 80 **автопродление HTTP-01 перестанет работать**. До закрытия выберите один из вариантов:
+После закрытия порта 80 **автопродление HTTP-01 перестанет работать**. При проблеме с сертификатом сначала верните `HTTP_PORT=80` и правило UFW из раздела 8.3. До закрытия выберите один из вариантов:
 
 1. настроить DNS-01 в Certbot через API DNS-провайдера;
 2. временно возвращать `HTTP_PORT=80` для продления и затем снова закрывать порт;
@@ -523,16 +672,17 @@ ssh -N -L 127.0.0.1:5050:127.0.0.1:5050 deploy@SERVER_IP
 ## 12. Повседневное управление и обновление
 
 ```bash
-# Статус и логи
+# Состояние и непрерывный вывод журналов
 docker compose --env-file .env.production -f docker-compose.production.yml ps
 docker compose --env-file .env.production -f docker-compose.production.yml logs -f app queue scheduler web-https pgadmin
 
-# Laravel
+# Сведения о версии Laravel, maintenance mode и его отключение
 docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan about
 docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan down
 docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan up
 
-# Обновление: сначала резервная копия, затем
+# Обновление: сначала резервная копия, затем получение fast-forward изменений,
+# пересборка/перезапуск сервисов и просмотр инициализации
 git pull --ff-only
 docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
 docker compose --env-file .env.production -f docker-compose.production.yml logs --tail=100 migrate
