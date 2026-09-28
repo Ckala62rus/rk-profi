@@ -2,7 +2,7 @@
 # start safely even while the app container is still joining the network.
 resolver 127.0.0.11 ipv6=off valid=10s;
 
-# HTTP нужен для HTTP-01 renewal and redirects all application traffic to HTTPS.
+# HTTP serves the application and the HTTP-01 challenge required for renewal.
 server {
     listen 80;
     listen [::]:80;
@@ -55,10 +55,6 @@ server {
     ssl_session_timeout 1d;
     ssl_session_cache shared:SSL:10m;
     ssl_session_tickets off;
-
-    if ($host != "${CANONICAL_HOST}") {
-        return 301 https://${CANONICAL_HOST}$request_uri;
-    }
 
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "SAMEORIGIN" always;

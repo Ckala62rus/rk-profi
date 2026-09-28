@@ -296,7 +296,7 @@ nano .env.production
 | `SERVER_NAME` | оба домена через пробел: `example.com xn--e1afmkfd.xn--p1ai` |
 | `LETSENCRYPT_EMAIL` | рабочий адрес для уведомлений о сертификате |
 | `LETSENCRYPT_CERT_NAME` | основной англоязычный домен, например `example.com` |
-| `APP_URL`, `FRONTEND_URL` | канонический URL: на первом шаге `http://example.com` |
+| `APP_URL`, `FRONTEND_URL` | базовый URL Laravel: на первом шаге `http://example.com` |
 | `SANCTUM_STATEFUL_DOMAINS` | оба домена через запятую и без протоколов: `example.com,xn--e1afmkfd.xn--p1ai` |
 | `DB_PASSWORD` | длинный уникальный случайный пароль |
 | `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD` | учётная запись для локального PgAdmin; пароль должен отличаться от пароля БД |
@@ -304,7 +304,7 @@ nano .env.production
 | `LEAD_NOTIFY_EMAIL` | адрес получателя заявок |
 | `TURNSTILE_*` | ключи Turnstile или пустые значения |
 
-`APP_URL` и `FRONTEND_URL` намеренно содержат только один канонический домен — в примере англоязычный. Второй домен обслуживает тот же сайт. Если домены должны показывать разные языковые версии, этого недостаточно: потребуется отдельная логика определения языка и URL в приложении.
+`APP_URL` и `FRONTEND_URL` содержат основной URL Laravel — в примере англоязычный. Они не задают междоменный редирект: оба домена обслуживают один и тот же сайт. Если домены должны показывать разные языковые версии, этого недостаточно: потребуется отдельная логика определения языка и URL в приложении.
 
 Создайте пароль БД:
 
@@ -383,17 +383,17 @@ docker compose --env-file .env.production -f docker-compose.production.yml logs 
 
 ```bash
 getent ahostsv4 rkprofi.ru
-getent ahostsv4 xn--h1admddc3a.xn--p1ag
+getent ahostsv4 xn--h1admddc3a.xn--p1ai
 ```
 
 ### 8.1 Выпуск сертификата
 
-Выпускается один сертификат для обоих имён сайта: `rkprofi.ru` и `ркпрофи.ру`. Для русского домена Let’s Encrypt принимает только Punycode-форму `xn--h1admddc3a.xn--p1ag`.
+Выпускается один сертификат для обоих имён сайта: `rkprofi.ru` и `ркпрофи.рф`. Для кириллического домена Let’s Encrypt принимает только Punycode-форму `xn--h1admddc3a.xn--p1ai`.
 
 Выполните команду из каталога `backend`:
 
 ```bash
-docker compose --env-file .env.production -f docker-compose.production.yml --profile certbot run --rm certbot certonly --webroot --webroot-path /var/www/certbot --email "$(sed -n 's/^LETSENCRYPT_EMAIL=//p' .env.production)" --agree-tos --no-eff-email --cert-name rkprofi.ru -d rkprofi.ru -d xn--h1admddc3a.xn--p1ag
+docker compose --env-file .env.production -f docker-compose.production.yml --profile certbot run --rm certbot certonly --webroot --webroot-path /var/www/certbot --email "$(sed -n 's/^LETSENCRYPT_EMAIL=//p' .env.production)" --agree-tos --no-eff-email --cert-name rkprofi.ru -d rkprofi.ru -d xn--h1admddc3a.xn--p1ai
 ```
 
 Подстановка `$(sed ...)` читает почтовый адрес из строки `LETSENCRYPT_EMAIL` файла `.env.production` и передаёт его Certbot для уведомлений о сертификате. Не нужно публиковать или вставлять адрес в команду вручную. `--cert-name rkprofi.ru` задаёт имя каталога сертификата; оно уже соответствует `LETSENCRYPT_CERT_NAME=rkprofi.ru` в `.env.production`.
@@ -429,7 +429,7 @@ curl -k -I https://127.0.0.1/up -H 'Host: rkprofi.ru'
 
 ```bash
 curl -I https://rkprofi.ru
-curl -I https://xn--h1admddc3a.xn--p1ag
+curl -I https://xn--h1admddc3a.xn--p1ai
 ```
 
 ## 9. Автопродление сертификата

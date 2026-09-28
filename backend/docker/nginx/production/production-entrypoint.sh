@@ -3,7 +3,6 @@ set -eu
 
 : "${NGINX_MODE:?NGINX_MODE must be http or https}"
 : "${SERVER_NAME:?SERVER_NAME must be set}"
-: "${CANONICAL_HOST:?CANONICAL_HOST must be set}"
 
 case "$NGINX_MODE" in
     http|https)
@@ -14,7 +13,7 @@ case "$NGINX_MODE" in
         ;;
 esac
 
-envsubst '$SERVER_NAME $CANONICAL_HOST $NGINX_UPSTREAM $LETSENCRYPT_CERT_NAME' \
+envsubst '$SERVER_NAME $NGINX_UPSTREAM $LETSENCRYPT_CERT_NAME' \
     < "/etc/nginx/production-templates/${NGINX_MODE}.conf.template" \
     > /etc/nginx/conf.d/default.conf
 
