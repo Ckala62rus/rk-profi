@@ -55,6 +55,7 @@ Route::prefix('api/v1')->group(function () {
 
             Route::get('/leads', [AdminCrudController::class, 'leadsIndex']);
             Route::patch('/leads/{lead}', [AdminCrudController::class, 'leadsUpdate']);
+            Route::post('/leads/{lead}/retry-email', [AdminCrudController::class, 'leadsRetryEmail']);
 
             Route::get('/categories', [AdminCrudController::class, 'categoriesIndex']);
             Route::post('/categories', [AdminCrudController::class, 'categoriesStore']);

@@ -20,7 +20,7 @@ services:
   queue:
     image: rkprofi-app:${APP_IMAGE_TAG:-production}
     working_dir: /var/www
-    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--max-time=3600"]
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=60", "--max-time=3600"]
     env_file:
       - ${ENV_FILE:-./.env.production}
     volumes:

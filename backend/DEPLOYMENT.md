@@ -415,7 +415,19 @@ Production не запускает `DatabaseSeeder` и намеренно не �
 docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan admin:user create admin@example.com --name="Имя администратора"
 ```
 
-`exec app` запускает Artisan внутри уже работающего PHP-контейнера. `admin:user create` создаёт только одного пользователя с указанным email; если такой email уже существует, команда завершается без изменений. Она запросит подтверждение, затем пароль дважды. Ввод пароля в терминале не отображается — это нормально. Пароль должен состоять минимум из 16 символов и включать строчные и прописные **латинские** буквы, цифру и обычный ASCII-символ, например `!`, `@`, `#`, `$`, `%`, `&` или `*`. Если показаны `validation.min.string` или `validation.password.symbols`, пользователь не создан: повторите команду с более длинным паролем и одним из этих символов. Сохраните пароль в корпоративном менеджере паролей.
+`exec app` запускает Artisan внутри уже работающего PHP-контейнера. `admin:user create` создаёт только одного пользователя с указанным email; если такой email уже существует, команда завершается без изменений. Она запросит подтверждение, затем пароль дважды. Ввод пароля в терминале не отображается — это нормально. Пароль должен состоять минимум из 16 символов и включать строчную и прописную буквы, цифру и символ. Для предсказуемой совместимости используйте `A-Z`, `a-z`, `0-9` и печатный ASCII-символ, например `!`, `@`, `#`, `$`, `%`, `&` или `*`. При ошибках `validation.min.string`, `validation.password.mixed`, `validation.password.numbers` или `validation.password.symbols` пользователь не создан: исправьте пароль и повторите команду. Сохраните пароль в корпоративном менеджере паролей.
+
+Если Artisan сообщает `There are no commands defined in the "admin" namespace` или `Command "admin:user" is not defined`, на VDS запущен образ из старой версии исходного кода. Не создавайте пользователя через SQL и не выполняйте полный `php artisan db:seed`. Из каталога `backend` обновите исходный код и образ, затем проверьте наличие команды:
+
+```bash
+git status --short
+git pull --ff-only
+docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
+docker compose --env-file .env.production -f docker-compose.production.yml logs --tail=100 migrate
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan help admin:user
+```
+
+Продолжайте только если `git status --short` не показывает непонятных локальных изменений, а последняя команда выводит справку `admin:user`. Не выполняйте `composer install` внутри работающего production-контейнера.
 
 Учётную запись можно создать уже на HTTP-этапе, но **не входите в админку до завершения раздела 8.2**: в этот момент HTTPS ещё не включён, а `SESSION_SECURE_COOKIE=true` намеренно не даёт браузеру передавать сессионную cookie по HTTP.
 
@@ -434,6 +446,20 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 ```
 
 `admin:user reset` находит только существующего пользователя, запрашивает новый пароль скрытым вводом и отзывает **все** его активные Sanctum API-токены. После этого потребуется войти заново на всех устройствах. Команда изменяет только пароль и токены выбранного пользователя; она не удаляет сайт, загрузки, контейнеры или Docker-тома.
+
+### 7.2 Восстановление обязательных CMS-страниц
+
+Админка ожидает страницы со slug `home`, `about`, `services`, `contacts` и `privacy`. Если при сохранении вкладки появляется сообщение «Страница не найдена в БД. Выполните сидер.», не запускайте полный `php artisan db:seed` и не используйте `migrate:fresh`: они не нужны и могут изменить либо удалить production-данные.
+
+Сначала обновите код и пересоберите образ по разделу 12. Затем из каталога `backend` безопасно выполните только production-сидер:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan db:seed --class=RequiredPublicPagesSeeder --force
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan optimize:clear
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan optimize
+```
+
+`RequiredPublicPagesSeeder` создаёт только отсутствующие CMS-страницы и не перезаписывает существующие заголовки, блоки, фоны и загруженные файлы. После команд обновите админку с `Ctrl+F5`; для изменения фона выберите тип «Изображение», загрузите файл и нажмите «Сохранить вкладку».
 
 ## 8. Выпустить сертификат Let’s Encrypt и включить HTTPS
 
@@ -647,13 +673,26 @@ PGADMIN_DEFAULT_EMAIL=ваш-email@example.com
 PGADMIN_DEFAULT_PASSWORD=длинный-уникальный-пароль
 ```
 
-После `docker compose ... up -d` создайте SSH-туннель на своём компьютере. Команду держите запущенной, пока работаете с PgAdmin:
+После `docker compose ... up -d` создайте SSH-туннель **на своём компьютере**, а не на VDS:
 
 ```bash
-ssh -N -L 127.0.0.1:5050:127.0.0.1:5050 deploy@SERVER_IP
+ssh -N -o ExitOnForwardFailure=yes -L 127.0.0.1:5050:127.0.0.1:5050 deploy@SERVER_IP
 ```
 
-Откройте в браузере `http://127.0.0.1:5050` и войдите с `PGADMIN_DEFAULT_EMAIL` и `PGADMIN_DEFAULT_PASSWORD`.
+Да, эта команда намеренно занимает текущий терминал, пока нужен доступ к PgAdmin. Откройте её в отдельной вкладке/окне терминала, не закрывайте его во время работы и завершите туннель `Ctrl+C`, когда закончите. Не добавляйте `-g`: порт должен оставаться доступным только с вашего компьютера.
+
+На Linux/macOS можно запустить управляемый туннель в фоне:
+
+```bash
+ssh -fN -M -S "$HOME/.ssh/rkprofi-pgadmin.sock" -o ExitOnForwardFailure=yes -L 127.0.0.1:5050:127.0.0.1:5050 deploy@SERVER_IP
+ssh -S "$HOME/.ssh/rkprofi-pgadmin.sock" -O check deploy@SERVER_IP
+# После работы:
+ssh -S "$HOME/.ssh/rkprofi-pgadmin.sock" -O exit deploy@SERVER_IP
+```
+
+В Windows безопасный и простой вариант — оставить обычный туннель в отдельном окне PowerShell/Windows Terminal и остановить его `Ctrl+C`. Если используется графический SSH-клиент, настройте эквивалентное локальное перенаправление `127.0.0.1:5050` → `127.0.0.1:5050` на VDS.
+
+Когда туннель запущен, откройте на **своём компьютере** `http://127.0.0.1:5050` и войдите с `PGADMIN_DEFAULT_EMAIL` и `PGADMIN_DEFAULT_PASSWORD`.
 
 В PgAdmin добавьте подключение **Register → Server** со значениями:
 
@@ -669,6 +708,17 @@ ssh -N -L 127.0.0.1:5050:127.0.0.1:5050 deploy@SERVER_IP
 
 `postgres` — внутреннее имя Docker-сервиса, поэтому оно разрешается из контейнера PgAdmin, но не с вашего компьютера. Не используйте публичный IP VDS и не публикуйте PostgreSQL наружу.
 
+PostgreSQL не слушает порт `5432` на VDS и доступен только во внутренней Docker-сети. Поддерживаемые способы работы с базой:
+
+1. PgAdmin через описанный выше SSH-туннель;
+2. консоль `psql` внутри контейнера PostgreSQL на VDS:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec postgres sh -c 'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Выйти из `psql` — `\q`. Не открывайте `5432` в UFW и не добавляйте `ports:` для PostgreSQL. Туннель вида `ssh -L 127.0.0.1:5432:postgres:5432 ...` не работает и не нужен: имя `postgres` существует только в Docker-сети, а не на SSH-сервере VDS.
+
 ## 12. Повседневное управление и обновление
 
 ```bash
@@ -681,11 +731,54 @@ docker compose --env-file .env.production -f docker-compose.production.yml exec 
 docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan down
 docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan up
 
-# Обновление: сначала резервная копия, затем получение fast-forward изменений,
-# пересборка/перезапуск сервисов и просмотр инициализации
+# Обновление: сначала выполните резервное копирование по разделу 13.
+# Затем убедитесь, что на VDS нет непонятных локальных изменений,
+# получите fast-forward изменения, пересоберите сервисы и проверьте инициализацию.
+git status --short
 git pull --ff-only
 docker compose --env-file .env.production -f docker-compose.production.yml up -d --build
 docker compose --env-file .env.production -f docker-compose.production.yml logs --tail=100 migrate
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan about
+```
+
+Не выполняйте `git pull`, если `git status --short` показал непонятные локальные изменения: сначала выясните их происхождение. После каждого обновления проверьте `migrate`: одноразовый сервис применяет миграции, запускает только `RequiredPublicPagesSeeder`, а затем выполняет `php artisan optimize`. Этот сидер создаёт отсутствующие обязательные CMS-страницы, но не перезаписывает существующий CMS-контент. Не заменяйте его полным `php artisan db:seed`.
+
+Не запускайте `php artisan test` в production-контейнере: образ намеренно собирается с `composer install --no-dev` и не содержит PHPUnit, поэтому Artisan покажет `Command "test" is not defined`. Тесты запускайте до развёртывания в CI либо в отдельном локальном/staging-окружении с тестовой базой данных. Не устанавливайте dev-зависимости и не запускайте `composer install` в работающем production-контейнере.
+
+### Контроль доставки заявок и безопасная проверка SMTP
+
+Каждая новая заявка сначала получает статус уведомления **«В очереди»**. Очередь делает до трёх попыток с паузами; итог отображается в **Админка → Заявки**:
+
+- **Ожидает постановки / В очереди / Отправляется** — задача проходит постановку, ожидает или выполняет доставку;
+- **Отправлено** — SMTP принял уведомление, указаны время и число попыток;
+- **Ошибка доставки / Не поставлено в очередь** — сохранена техническая причина, а у администратора доступна кнопка **«Повторить»**.
+
+Бизнес-статус заявки (`Новая`, `В работе` и т. п.) независим от статуса email. Переход в очередь и создание database-job выполняются одной транзакцией; повторные клики не создают дубликаты, а задачи старше 30 минут планировщик помечает ошибочными для ручного retry. Миграция при обновлении помечает прежние записи без успешной отправки как ошибочные, чтобы их можно было осознанно проверить и повторно поставить в очередь из админки; старые записи с `email_sent_at` будут отмечены как отправленные.
+
+SMTP-почта технически имеет семантику **at-least-once**: если worker аварийно завершился в редкий момент после принятия SMTP-сервером письма, но до записи статуса в БД, повтор может создать дубликат уведомления. В письме указан ID заявки, поэтому менеджер может распознать такую ситуацию. Полностью исключить её можно только при переходе на почтовый API с поддержкой idempotency-key; стандартный SMTP такого подтверждения не предоставляет.
+
+Задачи, созданные до внедрения этого контроля, содержат старое поле `lead` в payload. После обновления они совместимы: `queue:retry UUID` преобразует такую задачу в современную версионированную отправку. Для ошибочной задачи, обработанной **до** этого обновления, сначала разверните новую версию, затем повторите только конкретную задачу:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan queue:retry UUID
+```
+
+Не используйте `queue:retry all` без проверки списка: это повторит все исторические failed jobs. Перед повтором посмотрите UUID и причину:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan queue:failed
+```
+
+Для изолированной проверки SMTP не создавайте тестовую заявку и не используйте адрес реального клиента. Укажите контролируемый почтовый ящик и выполните:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml exec app php artisan mail:test --to=YOUR_TEST_ADDRESS --force
+```
+
+В production обязательны явные `--to` и `--force`; команда дополнительно запросит подтверждение. Она отправляет только статический текст без данных заявок или секретов. Успех означает, что SMTP-сервер принял письмо, но не заменяет проверку его появления в ящике. При ошибке смотрите логи, не публикуя значения `MAIL_PASSWORD`:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml logs --tail=100 app queue
 ```
 
 Не выполняйте `docker compose down -v` в production: флаг `-v` удалит PostgreSQL, PgAdmin и другие именованные тома.
@@ -727,5 +820,6 @@ docker compose --env-file .env.production -f docker-compose.production.yml logs 
 - `APP_DEBUG=false`;
 - `.env.production`, `deploy/letsencrypt/` и резервные копии не попадают в Git;
 - сертификат открывается по всем доменам;
-- формы отправляют письмо на `LEAD_NOTIFY_EMAIL`;
+- формы создают заявку, а в админке виден корректный статус доставки на `LEAD_NOTIFY_EMAIL`;
+- SMTP-проверка `mail:test --to=... --force` выполнена на контролируемый ящик и письмо получено;
 - выполнена хотя бы одна проверка восстановления резервной копии.

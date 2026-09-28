@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Actions\QueueLeadNotificationAction;
 use App\Actions\SyncCategoryImageAction;
 use App\Actions\SyncProductMediaAction;
 use App\Enums\LeadStatus;
@@ -59,6 +60,32 @@ class AdminCrudController extends Controller
         $lead->update(['status' => $data['status']]);
 
         return ApiResponse::success($lead->fresh());
+    }
+
+    /**
+     * Повторно ставит в очередь уведомление, которое не было доставлено.
+     *
+     * @param LeadRequest $lead Заявка
+     * @param QueueLeadNotificationAction $queueNotification Постановка email в очередь
+     * @return JsonResponse
+     */
+    public function leadsRetryEmail(LeadRequest $lead, QueueLeadNotificationAction $queueNotification): JsonResponse
+    {
+        if (! in_array($lead->email_delivery_status, ['pending', 'failed', 'dispatch_failed'], true)) {
+            return ApiResponse::error('Повторная отправка доступна только для писем с ошибкой.', [], 409);
+        }
+
+        if (! $queueNotification->execute($lead)) {
+            $freshLead = $lead->fresh();
+
+            if (in_array($freshLead->email_delivery_status, ['queued', 'sending', 'sent'], true)) {
+                return ApiResponse::success($freshLead, 'Уведомление уже обрабатывается.');
+            }
+
+            return ApiResponse::error('Не удалось поставить уведомление в очередь. Проверьте журнал приложения.', [], 503);
+        }
+
+        return ApiResponse::success($lead->fresh(), 'Уведомление поставлено в очередь.');
     }
 
     /**

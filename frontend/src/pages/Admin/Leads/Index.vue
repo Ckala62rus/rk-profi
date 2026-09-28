@@ -13,6 +13,8 @@ const items = ref([]);
 const isLoading = ref(false);
 /** Ошибка */
 const errorText = ref('');
+/** ID заявок, для которых выполняется retry */
+const retryingLeadIds = ref(new Set());
 
 /** Статусы */
 const statuses = [
@@ -82,12 +84,86 @@ const changeStatus = async (lead, event) => {
 const fileUrl = (path) => `/storage/${path}`;
 
 /**
- * Метка “письмо отправлено/нет”.
+ * Читаемая метка состояния доставки уведомления.
  *
  * @param {object} lead Заявка
  * @returns {string}
  */
-const emailSentLabel = (lead) => (lead.email_sent_at ? 'Отправлено' : 'Не отправлено');
+const emailDeliveryLabel = (lead) => ({
+    pending: 'Ожидает постановки',
+    queued: 'В очереди',
+    sending: 'Отправляется',
+    sent: 'Отправлено',
+    failed: 'Ошибка доставки',
+    dispatch_failed: 'Не поставлено в очередь',
+}[lead.email_delivery_status] || (lead.email_sent_at ? 'Отправлено' : 'Нет данных'));
+
+/**
+ * CSS-класс статуса доставки.
+ *
+ * @param {object} lead Заявка
+ * @returns {string}
+ */
+const emailDeliveryClass = (lead) => ({
+    pending: 'badge-light-warning',
+    queued: 'badge-light-warning',
+    sending: 'badge-light-primary',
+    sent: 'badge-light-success',
+    failed: 'badge-light-danger',
+    dispatch_failed: 'badge-light-danger',
+}[lead.email_delivery_status] || 'badge-light-secondary');
+
+/**
+ * Можно ли вручную повторить уведомление.
+ *
+ * @param {object} lead Заявка
+ * @returns {boolean}
+ */
+const canRetryEmail = (lead) => ['pending', 'failed', 'dispatch_failed'].includes(lead.email_delivery_status);
+
+/**
+ * Проверяет, выполняется ли уже повторная постановка конкретной заявки.
+ *
+ * @param {object} lead Заявка
+ * @returns {boolean}
+ */
+const isRetryingEmail = (lead) => retryingLeadIds.value.has(lead.id);
+
+/**
+ * Синхронизирует карточку заявки в таблице и открытом диалоге.
+ *
+ * @param {object} updated Обновлённая заявка из API
+ * @returns {void}
+ */
+const applyLeadUpdate = (updated) => {
+    const row = items.value.find((lead) => lead.id === updated.id);
+    if (row) Object.assign(row, updated);
+    if (leadView.value?.id === updated.id) Object.assign(leadView.value, updated);
+};
+
+/**
+ * Вручную повторяет доставку уведомления после ошибки.
+ *
+ * @param {object} lead Заявка
+ * @returns {Promise<void>}
+ */
+const retryEmail = async (lead) => {
+    if (isRetryingEmail(lead)) return;
+
+    errorText.value = '';
+    retryingLeadIds.value = new Set([...retryingLeadIds.value, lead.id]);
+    try {
+        const response = await leadsApi.retryEmail(lead.id);
+        const updated = response.data?.data ?? response.data;
+        applyLeadUpdate(updated);
+    } catch (error) {
+        errorText.value = error.response?.data?.message || 'Не удалось повторить отправку';
+    } finally {
+        const nextIds = new Set(retryingLeadIds.value);
+        nextIds.delete(lead.id);
+        retryingLeadIds.value = nextIds;
+    }
+};
 
 /**
  * Форматирует дату/время заявки для таблицы и модалки.
@@ -199,11 +275,22 @@ onMounted(load);
               </template>
             </el-table-column>
 
-            <el-table-column label="Письмо менеджеру">
+            <el-table-column label="Уведомление" width="190">
               <template #default="{ row }">
-                <span class="badge" :class="row.email_sent_at ? 'badge-light-success' : 'badge-light-danger'">
-                  {{ emailSentLabel(row) }}
-                </span>
+                <div class="d-flex flex-column gap-2 align-items-start">
+                  <span class="badge" :class="emailDeliveryClass(row)">
+                    {{ emailDeliveryLabel(row) }}
+                  </span>
+                  <button
+                    v-if="canRetryEmail(row)"
+                    type="button"
+                    class="btn btn-sm btn-light-primary"
+                    :disabled="isRetryingEmail(row)"
+                    @click="retryEmail(row)"
+                  >
+                    {{ isRetryingEmail(row) ? 'Постановка…' : 'Повторить' }}
+                  </button>
+                </div>
               </template>
             </el-table-column>
 
@@ -294,15 +381,42 @@ onMounted(load);
                     </select>
                   </div>
                   <div class="col-md-6 fv-row">
-                    <label class="fs-6 fw-bold mb-2">Письмо менеджеру</label>
-                    <div>
-                      <span
-                        class="badge"
-                        :class="leadView.email_sent_at ? 'badge-light-success' : 'badge-light-danger'"
-                      >
-                        {{ emailSentLabel(leadView) }}
+                    <label class="fs-6 fw-bold mb-2">Уведомление менеджеру</label>
+                    <div class="d-flex flex-column gap-2 align-items-start">
+                      <span class="badge" :class="emailDeliveryClass(leadView)">
+                        {{ emailDeliveryLabel(leadView) }}
                       </span>
+                      <button
+                        v-if="canRetryEmail(leadView)"
+                        type="button"
+                        class="btn btn-sm btn-light-primary"
+                        :disabled="isRetryingEmail(leadView)"
+                        @click="retryEmail(leadView)"
+                      >
+                        {{ isRetryingEmail(leadView) ? 'Постановка…' : 'Повторить отправку' }}
+                      </button>
                     </div>
+                  </div>
+                </div>
+
+                <div class="fv-row mb-7">
+                  <label class="fs-6 fw-bold mb-2">Детали доставки уведомления</label>
+                  <div class="row g-5">
+                    <div class="col-md-6">
+                      <div class="text-muted fs-7">Получатель</div>
+                      <div class="fw-bolder">{{ leadView.email_recipient || '—' }}</div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="text-muted fs-7">Попыток</div>
+                      <div class="fw-bolder">{{ leadView.email_attempts ?? 0 }}</div>
+                    </div>
+                    <div class="col-md-3">
+                      <div class="text-muted fs-7">Отправлено</div>
+                      <div class="fw-bolder">{{ formatDateTime(leadView.email_sent_at) }}</div>
+                    </div>
+                  </div>
+                  <div v-if="leadView.email_error" class="alert alert-danger mt-4 mb-0 py-3">
+                    {{ leadView.email_error }}
                   </div>
                 </div>
 

@@ -19,6 +19,7 @@ const urls = {
     // Админ: CRUD
     adminLeads: '/v1/admin/leads',
     adminLead: (id) => `/v1/admin/leads/${id}`,
+    adminLeadRetryEmail: (id) => `/v1/admin/leads/${id}/retry-email`,
     adminCategories: '/v1/admin/categories',
     adminCategory: (id) => `/v1/admin/categories/${id}`,
     adminProducts: '/v1/admin/products',

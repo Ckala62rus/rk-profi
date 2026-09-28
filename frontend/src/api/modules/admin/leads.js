@@ -20,7 +20,16 @@ const index = () => axios.get(urls.adminLeads);
  */
 const update = (id, payload) => axios.patch(urls.adminLead(id), payload);
 
+/**
+ * Повторно поставить в очередь уведомление о заявке с ошибкой доставки.
+ *
+ * @param {number|string} id ID заявки
+ * @returns {Promise<import('axios').AxiosResponse>}
+ */
+const retryEmail = (id) => axios.post(urls.adminLeadRetryEmail(id));
+
 export default {
     index,
     update,
+    retryEmail,
 };

@@ -3,7 +3,6 @@
 namespace App\Actions;
 
 use App\Enums\LeadStatus;
-use App\Jobs\SendNewLeadMailJob;
 use App\Models\LeadRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -43,23 +42,16 @@ class CreateLeadRequestAction
                 'message' => $data['message'],
                 'attachments' => $stored,
                 'status' => LeadStatus::New,
-                // Поле выставляем только после успешной отправки письма.
-                // Если отправка упадёт — заявка остаётся созданной, а флаг останется null.
                 'email_sent_at' => null,
+                'email_delivery_status' => 'pending',
                 'ip' => $data['ip'] ?? null,
                 'user_agent' => $data['user_agent'] ?? null,
             ]);
         });
 
-        try {
-            // Письмо и флаг email_sent_at — в очереди (QUEUE_CONNECTION=database).
-            SendNewLeadMailJob::dispatch($lead);
-        } catch (\Throwable $e) {
-            // Не прерываем создание заявки: пользователь должен получить успешный ответ.
-            report($e);
-        }
+        app(QueueLeadNotificationAction::class)->execute($lead);
 
-        return $lead;
+        return $lead->fresh();
     }
 
     /**
